@@ -1,0 +1,26 @@
+<head>
+        <link rel="stylesheet" typ e="teqt/css" href="p o.css"/>
+</head>
+<body>
+<div style="float: left; width: 2100;">
+    <div class="hex-row even"> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex">c</div> <div class="hex">p </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex">p </div> <div class="hex">p </div> <div class="hex">p </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex">3</div> </div>
+    <div class="hex-row"> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex">p </div> <div class="hex">p </div> <div class="hex">c</div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex">p </div> <div class="hex">c</div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex"> </div> <div class="hex">p </div> <div class="hex">c</div> <div class="hex">p </div> <div class="hex">p </div> <div class="hex">c</div> <div class="hex">p </div> <div class="hex">p </div> </div>
+         p1p                   p p p     pK
+        p p p1    p p1      p p1p p p1p p 
+         p p p1p p1p p p p p p p p p p p 
+    p   p p3p p p p p1p p1p p p p p p p 
+   p p1p1p p pGp p p p p p p p p1p1p 
+    p p p p p p p pbpbpbp p p1p p p 
+   p p1p p p p p pbpBpBpbp p p p p 
+  p p h1h p1p1p p1pbpBpbp1p p p1p 
+ p1p1p1h h h p p p pbpbp1p p p p 
+p1pPp1h h h1m m p1p p p p p p1p p 
+ p1h h m mYm1m1h pOh h2h h1h p pWp 
+p1p2p m m m m h h h h1m m m m p1p 
+ h h1m h h h m h h1m 
+h m h1h2m h1h h1m m 
+ m h h m h m m h m 
+m1m h hRh m m h1m m 
+ m h h1m1m m h m h1m 
+  h1h m m1m m h m h m 
+   m1m m m m m1mLm m 
