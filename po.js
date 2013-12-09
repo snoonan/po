@@ -1,14 +1,14 @@
 var game_cfg = {
    "start_money": [-1,0,0,40,30,24],
    "companies": [
-      ["Preußische Ostbahn","PO",[21,0], 20, 'black'],
-      ["Niederschlesisch-Märkische Eisenbahn","NME", [21,10], 17, 'brown'],
-      ["Königlich-Sächsische Staatseisenbahnen","KSS",[14,10], 16, 'orange'],
-      ["Königlich-Bayerische Staatseisenbahnen","KBS",[17,18], 15, 'blue'],
-      ["Main-Weser-Bahn","MWB",[10,10], 14, 'yellow'],
-      ["Großherzoglich Badische Staatseisenbahnen","GBS",[11,15], 13, 'red'],
-      ["Cöln-Mindener Eisenbahn-Gesellschaft","CMEG",[6,9], 12, 'purple'],
-      ["Berlin-Hamburger Eisenbahn-Gesellschaft","BHEG",[9,4], 11, 'green']
+      ["Preußische Ostbahn","PO",[21,0], 20, 'black',""],
+      ["Niederschlesisch-Märkische Eisenbahn","NME", [21,10], 17, 'brown',""],
+      ["Königlich-Sächsische Staatseisenbahnen","KSS",[14,10], 16, 'orange',""],
+      ["Königlich-Bayerische Staatseisenbahnen","KBS",[17,18], 15, 'blue',""],
+      ["Main-Weser-Bahn","MWB",[10,10], 14, 'yellow',""],
+      ["Großherzoglich Badische Staatseisenbahnen","GBS",[11,15], 13, 'red',""],
+      ["Cöln-Mindener Eisenbahn-Gesellschaft","CMEG",[6,9], 12, 'purple',""],
+      ["Berlin-Hamburger Eisenbahn-Gesellschaft","BHEG",[9,4], 11, 'green',""]
    ],
    "map": [
 ",        p1p                   p p p     p3",
@@ -36,6 +36,83 @@ var game_cfg = {
 var game = {
 };
 
+function bid_pass() {
+   game.bidders -= 1;
+   game.players[game.player_list[game.auction_idx]].pass = true;
+   next_auction();
+}
+function bid() {
+   var v = +$('#bid').val();
+   if (v <= game.auction_value) {
+      return;
+   }
+   if (v > game.game.auction_value.money) {
+      return;
+   }
+   game.auction_value = v;
+   game.auction_winner = game.auction_p;
+   $('#h_bidder').text(game.players[game.auction_p].name);
+   $('#h_bid').text(v);
+   next_auction();
+}
+
+function next_auction() {
+   if (game.bidders == 0) {
+      // Unwanted, return to pool.
+      next_action();
+   }
+   game.auction_idx += 1;
+   if (game.auction_idx == game.max_player) {game.auction_idx = 0;}
+   if ( game.players[game.player_list[game.auction_idx]].pass) {
+      next_auction();
+      return;
+   }
+   game.auction_p = game.player_list[game.auction_idx];
+   if (game.bidders == 1 && game.auction_value > 0) {
+      // Winner
+      buy_stock(game.bid_share,game.auction_p,game.auction_value);
+      game.bid_share = undefined;
+      $('#auction').hide();
+      $('#turn').show();
+      if (game.starting < game_cfg.companies.length) {
+         game.player_id = game.auction_winner;
+         _offer_stock(game_cfg.companies[game.starting][1]);
+         game.starting += 1;
+         return;
+      } else if (game.starting == game_cfg.companies.length) {
+         next_turn();
+         return;
+      }
+      next_action();
+   }
+   $('#bidder').text(game.players[game.auction_p].name);
+   $('#bid').val(game.auction_value + 1);
+}
+function offer_stock(c) {
+   if (game.bid_share || game.place_co) {
+      // Already doing some action
+      return;
+   }
+   var name = this.id.split('_')[0]
+   _offer_stock(name);
+}
+function _offer_stock(name) {
+   game.bid_share = name;
+   game.auction_value = -1;
+   game.auction_winner = undefined;
+   $('#bid_co').text(game.companies[name].fullname);
+   $('#bid_mark').attr('style',game.companies[name].color);
+   $('#bid').val(0);
+   $('#auction').show();
+   $('#turn').hide();
+   for (var i = 0; i < game.max_player; i += 1) {
+      game.players[game.player_list[i]].pass = false;
+   }
+   // -1 is because next will ++ before doing anything and THIS is the first player to bid.
+   game.bidders = game.max_player;
+   game.auction_idx = game.player_list.indexOf(game.player_id) - 1;
+   next_auction();
+}
 function buy_stock(c,p,m) {
    game.companies[c].stock -=1;
    $('#'+c+'_stock').text(game.companies[c].stock);
@@ -79,14 +156,23 @@ function end_action() {
       // Pay everyone.
       $.each(game.companies, function(c) {
          game.companies[c].holders.forEach(function (h) {
-            game.players[h].money += +game.companies[c].income;
-            $('#p'+h+'_money').text(game.players[h].money);
+            // SPECIAL: BHEG needs to be at[8,2] and game.berlin to pay
+            if (c == 'BHEG' && (game.companies[c].city.indexOf('8_2') == -1 ||
+                                game.companies[c].city.indexOf(game.berlin[0]+'_'+game.berlin[1]) == -1)) {
+               return;
+            }
+            update_p_money(h, +game.companies[c].income);
          });
       });
       // Pay touching co again.
       game.companies[game.placing_co].holders.forEach(function (h) {
-         game.players[h].money += +game.companies[game.placing_co].income;
-         $('#p'+h+'_money').text(game.players[h].money);
+         // SPECIAL: BHEG needs to be at[8,2] and game.berlin to pay
+         if (game.placing_co == 'BHEG' &&
+              (game.companies[game.placing_co].city.indexOf('8_2') == -1 ||
+               game.companies[game.placing_co].city.indexOf(game.berlin[0]+'_'+game.berlin[1]) == -1)) {
+            return;
+         }
+         update_p_money(h, +game.companies[game.placing_co].income);
       });
    }
    next_action();
@@ -116,6 +202,16 @@ function update_c_money(c, v) {
    $('#'+c+'_money').text(game.companies[c].money);
 }
 function add_income(c, v) {
+   // SPECIAL: MWB doubles biggest city.
+   if (c == "MWB") {
+      if (v > (game.companies[c].biggest_city||0)) {
+         // Add new biggest.
+         v += v;
+         // Subtract last biggest.
+         v -= game.companies[c].biggest_city||0;
+         game.companies[c].biggest_city = v;
+      }
+   }
    game.companies[c].income += +v;
    $('#'+c+'_income').text(game.companies[c].income);
    game.companies[c].holders.forEach(function (h) {
@@ -135,16 +231,11 @@ function touch(a,b) {
   $('#'+a+'_touch').append($('<span/>', {"style":"background:"+game.companies[b].color, html:"&nbsp;"}));
   game.companies[a].touched[b] = true;
 }
-function offer_stock(c) {
-   var name = this.id.split('_')[0]
-   name = game.companies[name].fullname;
-   alert('offering '+name);
-
-   if (game.placing_co == undefined) {
+function place_cubes(c) {
+   if (game.bid_share || game.place_co) {
+      // Already doing some action
       return;
    }
-}
-function place_cubes(c) {
    var name = this.id.split('_')[0]
    if (game.companies[name].holders.indexOf(game.player_id) == -1) {
       return;
@@ -258,7 +349,7 @@ function clickhex(h) {
           game.city[x+'_'+y] = [];
        }
        game.city[x+'_'+y].push(game.placing_co);
-       add_income(game.placing_co, city);
+       add_income(game.placing_co, +city);
     }
     place_cube(game.placing_co, x, y);
     update_c_money(game.placing_co, -cost);
@@ -349,6 +440,7 @@ function start()
       var loc = l[2];
       var cubes = l[3];
       var color = l[4];
+      var special = l[5];
 
       var row;
       var cell;
@@ -368,7 +460,7 @@ function start()
       game.auction_list.push(name);
 
       row = $("<tr>");
-      cell = $("<td/>", {text:name, style:'background:'+color+';'});
+      cell = $("<td/>", {text:name, style:'background:'+color+';', 'title':special});
       row.append(cell);
       cell = $("<td/>", {id:name+'_stock', 'class':'auction', text:company.stock});
       row.append(cell);
@@ -385,18 +477,15 @@ function start()
       // Place starting city.
       place_cube(name, loc[0], loc[1]);
       game.city[loc[0]+'_'+loc[1]] = [name];
-      add_income(name, $('#'+loc[0]+'_'+loc[1]+' .middle').attr('city'));
+      add_income(name, +$('#'+loc[0]+'_'+loc[1]+' .middle').attr('city'));
    });
    $('.auction').click(offer_stock);
    $('.place').click(place_cubes);
 
-   // XXX Temp till auctions work.
-   game.player_list.forEach(function (p) {
-      buy_stock(game_cfg.companies[p][1], p, 10);
-      buy_stock(game_cfg.companies[p+1][1], p, 10);
-   });
-
-   next_turn();
+   game.starting = 0;
+   game.player_id = 0;
+   _offer_stock(game_cfg.companies[game.starting][1]);
+   game.starting += 1;
 }
 
 function update_name(p)
