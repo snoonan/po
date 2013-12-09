@@ -1,5 +1,5 @@
 var game_cfg = {
-   "start_cash": [-1,0,0,40,30,24],
+   "start_money": [-1,0,0,40,30,24],
    "companies": [
       ["Preußische Ostbahn","PO",[21,0], 20, 'black'],
       ["Niederschlesisch-Märkische Eisenbahn","NME", [21,10], 17, 'brown'],
@@ -36,7 +36,82 @@ var game_cfg = {
 var game = {
 };
 
-function update_money(c, v) {
+function buy_stock(c,p,m) {
+   game.companies[c].stock -=1;
+   $('#'+c+'_stock').text(game.companies[c].stock);
+   game.companies[c].holders.push(p);
+   update_c_money(c,m);
+   update_p_money(p,-m);
+   game.players[p].shares.push(c);
+   game.players[p].income += game.companies[c].income;
+   $('#p'+p+'_income').text(game.players[p].income);
+   $('#p'+p+'_shares').append($('<span/>', {"style":"background:"+game.companies[c].color, html:c}));
+}
+
+function next_turn() {
+   var list = [];
+   game.players.forEach(function(p) {
+      if (p.id == undefined) {return;}
+      if (list[p.income] == undefined) { list[p.income] = []; }
+      list[p.income].push(p.id);
+   });
+   var cup = [];
+   var count = 1;
+   list.reverse().forEach(function (r) {
+      r.forEach(function(p) {
+         for (var c = 0; c < count; c++) {
+            cup.push(p);
+         }
+      });
+      count += 1;
+   });
+   game.actions = [];
+   for(var c = 0; c < game.max_player; c++) {
+       var p = cup.splice(Math.random() * cup.length, 1)[0];
+       game.actions.push(p);
+       $('#actions').append($('<span/>', {"p":p, text:game.players[p].name}));
+   }
+   next_action();
+}
+function end_action() {
+   if (game.merge) {
+      // A merge event happened, pay out.
+      // Pay everyone.
+      $.each(game.companies, function(c) {
+         game.companies[c].holders.forEach(function (h) {
+            game.players[h].money += +game.companies[c].income;
+            $('#p'+h+'_money').text(game.players[h].money);
+         });
+      });
+      // Pay touching co again.
+      game.companies[game.placing_co].holders.forEach(function (h) {
+         game.players[h].money += +game.companies[game.placing_co].income;
+         $('#p'+h+'_money').text(game.players[h].money);
+      });
+   }
+   next_action();
+}
+function next_action() {
+   game.placing_co = undefined;
+   if (game.actions.length == 0) {
+      next_turn();
+      return;
+   }
+   game.player_id = game.actions.shift();
+   // Highlight/restrict choice by held stock.
+   $('.place.valid').removeClass('valid');
+   game.players[game.player_id].shares.forEach(function (c) {
+      $('#'+c+'_cubes').addClass('valid');
+   });
+
+   $('#action').children().remove();
+   $('#action').append($('#actions').children()[0]);
+}
+function update_p_money(p, v) {
+   game.players[p].money += +v;
+   $('#p'+p+'_money').text(game.players[p].money);
+}
+function update_c_money(c, v) {
    game.companies[c].money += +v;
    $('#'+c+'_money').text(game.companies[c].money);
 }
@@ -45,7 +120,7 @@ function add_income(c, v) {
    $('#'+c+'_income').text(game.companies[c].income);
    game.companies[c].holders.forEach(function (h) {
       game.players[h].income += +v;
-      $('#'+b+'_income').text(game.players[h].income);
+      $('#p'+h+'_income').text(game.players[h].income);
    });
 }
 function place_cube(c,x,y) {
@@ -71,8 +146,11 @@ function offer_stock(c) {
 }
 function place_cubes(c) {
    var name = this.id.split('_')[0]
+   if (game.companies[name].holders.indexOf(game.player_id) == -1) {
+      return;
+   }
    var fullname = game.companies[name].fullname;
-   game.merged = false;
+   game.merge = false;
    game.placing_co = name;
    game.placing_cubes = 3;
    game.placing_cost = 0;
@@ -129,6 +207,12 @@ function clickhex(h) {
     }
     var cost;
     cost = {'p':2, 'h':3, 'm':4}[e.attr('land')];
+    var city = e.attr('city');
+    if (city == 'B') {
+       x = game.berlin[0];
+       y = game.berlin[1];
+       city = 3;
+    }
     // Only cities can have more than one cube.
     // SPECIAL: NME has free city entry.
     if (game.loc[x+'_'+y] && game.placing_co != 'NME') {
@@ -151,9 +235,17 @@ function clickhex(h) {
        return;
     }
 
-    place_cube(game.placing_co, x, y);
-    var city = e.attr('city');
-    if (city != ' ') {
+    if (cost > game.companies[game.placing_co].money) {
+       return;
+    }
+    if (city == 'b') {
+       if (game.companies[game.placing_co].bez == true) {
+          return;
+       } else {
+          game.companies[game.placing_co].bez = true;
+       }
+    }
+    else if (city != ' ') {
        if (game.city[x+'_'+y]) {
           game.city[x+'_'+y].forEach(function (c)  {
              if(!game.companies[game.placing_co].touched[c]) {
@@ -168,8 +260,13 @@ function clickhex(h) {
        game.city[x+'_'+y].push(game.placing_co);
        add_income(game.placing_co, city);
     }
-    update_money(game.placing_co, -cost);
+    place_cube(game.placing_co, x, y);
+    update_c_money(game.placing_co, -cost);
     game.placing_cubes -= 1;
+    if (game.placing_cubes == 0) {
+       // Last cube
+       end_action();
+    }
 }
 
 function start()
@@ -196,6 +293,10 @@ function start()
          var cell = $("<div>",{"class":"top", land:c.charAt(0), city:c.charAt(1)});
          wrapper.append(cell);
          cell = $("<div>",{"class":"middle", land:c.charAt(0), city:c.charAt(1)});
+         // Berlin is special, but value 3.
+         if (c.charAt(1) == 'B') {c="p3"; game.berlin=[x,y];}
+         // Berlin exclusion is special, but not a city
+         if (c.charAt(1) == 'b') {c="p ";}
          if (c.charAt(1) != " ") {
             cell.append($("<span/>", { text:c.charAt(1)/*, style:"position:relative; z-index:2"*/}));
          }
@@ -208,6 +309,34 @@ function start()
       y += 1;
    });
    $('#map').click(clickhex)
+
+    var tbl = document.getElementById('players');
+    var rows = tbl.getElementsByTagName('tr');
+    var r;
+    game.players = [];
+    game.player_list = [];
+    game.max_player = 0;
+    for(var i=0; i < 5; i++) {
+        game.players[i] = {};
+        var ap = document.getElementById("p"+i+"_name");
+        if (ap.value == '') {
+            var ap = document.getElementById("p"+i);
+            ap.hidden = true;
+            game.players[i].shares = [];
+            game.players[i].income = 0;
+        } else {
+            game.players[i].id = i;
+            game.players[i].name=ap.value;
+            game.players[i].shares=[];
+            game.players[i].income=0;
+            game.players[i].money=0;
+            game.player_list.push(i);
+            game.max_player++;
+        }
+    }
+   game.player_list.forEach(function (p) {
+      update_p_money(p, game_cfg.start_money[game.max_player]);
+   });
 
    table = $('#companies');
    game.companies = {};
@@ -226,7 +355,7 @@ function start()
 
       var company = {'name':name,
                      'fullname':fullname,
-                     'money': 50,
+                     'money': 0,
                      'cubes': cubes,
                      'income':0,
                      'stock':3,
@@ -260,9 +389,18 @@ function start()
    });
    $('.auction').click(offer_stock);
    $('.place').click(place_cubes);
+
+   // XXX Temp till auctions work.
+   game.player_list.forEach(function (p) {
+      buy_stock(game_cfg.companies[p][1], p, 10);
+      buy_stock(game_cfg.companies[p+1][1], p, 10);
+   });
+
+   next_turn();
 }
 
+function update_name(p)
+{
+   var ap = document.getElementById("p"+p+"_name");
+}
 
-window.onload = function(e) {
-   start()
-};
