@@ -1,19 +1,19 @@
 var game_cfg = {
    "start_money": [-1,0,0,40,30,24],
    "companies": [
-      ["Preußische Ostbahn","PO",[21,0], 20, 'black',""],
-      ["Niederschlesisch-Märkische Eisenbahn","NME", [21,10], 17, 'brown',""],
-      ["Königlich-Sächsische Staatseisenbahnen","KSS",[14,10], 16, 'orange',""],
-      ["Königlich-Bayerische Staatseisenbahnen","KBS",[17,18], 15, 'blue',""],
-      ["Main-Weser-Bahn","MWB",[10,10], 14, 'yellow',""],
-      ["Großherzoglich Badische Staatseisenbahnen","GBS",[11,15], 13, 'red',""],
-      ["Cöln-Mindener Eisenbahn-Gesellschaft","CMEG",[6,9], 12, 'purple',""],
-      ["Berlin-Hamburger Eisenbahn-Gesellschaft","BHEG",[9,4], 11, 'green',""]
+      ["Preußische Ostbahn","PO",[21,0], 20, 'black',"Place 4 rails"],
+      ["Niederschlesisch-Märkische Eisenbahn","NME", [21,10], 17, 'brown',"No per rail cost in cities"],
+      ["Königlich-Sächsische Staatseisenbahnen","KSS",[14,10], 16, 'orange',"Place 2 rails"],
+      ["Königlich-Bayerische Staatseisenbahnen","KBS",[17,18], 15, 'blue',"Pay 1 less for terrain"],
+      ["Main-Weser-Bahn","MWB",[10,10], 14, 'yellow',"Double largest city"],
+      ["Großherzoglich Badische Staatseisenbahnen","GBS",[11,15], 13, 'red',"First non-city free"],
+      ["Cöln-Mindener Eisenbahn-Gesellschaft","CMEG",[6,9], 12, 'purple',"5 cash limit per action"],
+      ["Berlin-Hamburger Eisenbahn-Gesellschaft","BHEG",[9,4], 11, 'green',"No dividend until connected to Hamburg (3 in upper left) and Berlin"]
    ],
    "map": [
-",        p1p                   p p p     p3",
-"        p p p1    p p1      p p1p p p1p p ",
-",        p p p1p p1p p p p p p p p p p p ",
+",p2      p1p                   p p p     p3",
+"h3      p p p1    p p1      p p1p p p1p p ",
+",m4      p p p1p p1p p p p p p p p p p p ",
 "    p   p p3p p p p p1p p1p p p p p p p ",
 ",  p p1p1p p p1p p p p p p p p p1p1p ",
 "    p p p p p p p pbpbpbp p p1p p p ",
@@ -46,7 +46,7 @@ function bid() {
    if (v <= game.auction_value) {
       return;
    }
-   if (v > game.game.auction_value.money) {
+   if (v > game.players[game.auction_p].money) {
       return;
    }
    game.auction_value = v;
@@ -101,7 +101,7 @@ function _offer_stock(name) {
    game.auction_value = -1;
    game.auction_winner = undefined;
    $('#bid_co').text(game.companies[name].fullname);
-   $('#bid_mark').attr('style',game.companies[name].color);
+   $('#bid_mark').attr('style','background:'+game.companies[name].color);
    $('#bid').val(0);
    $('#auction').show();
    $('#turn').hide();
